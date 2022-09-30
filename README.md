@@ -5,3 +5,7 @@ Prefed version of Unity is 2020.1.17f1. After opening the project, hit "Play" th
 ## Links
 
 [Unity](https://unity.com/)
+
+## Screenshots
+<img src="https://user-images.githubusercontent.com/55844241/193350500-29040835-639c-4b57-a20c-f94b1be0026d.png" width="425"/>
+<img src="https://user-images.githubusercontent.com/55844241/193350507-84b862b9-97d6-4ee2-bf77-056de628766b.png" width="425"/>
