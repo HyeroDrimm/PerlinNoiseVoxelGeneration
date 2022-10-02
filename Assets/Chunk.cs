@@ -1,156 +1,162 @@
 ﻿using System;
-using UnityEngine;
 using System.Collections.Generic;
+using UnityEngine;
 
 [RequireComponent(typeof(MeshFilter))]
 [RequireComponent(typeof(MeshRenderer))]
-
 public class Chunk : MonoBehaviour
 {
-    private UInt16[] _voxels = new ushort[16 * 16 * 16];
-    private MeshFilter _meshFilter;
+	public int chunkSize = 16;
+	public ChunkId ChunkId;
+	private UInt16[] voxels;
+	private MeshFilter meshFilter;
 
-    public World _world;
+	public World World;
 
-    public Material _material;
+	public Material material;
+	private MeshRenderer meshRenderer;
 
-    public UInt16 this[int x, int y, int z]
-    {
-        get { return _voxels[x * 16 * 16 + y * 16 + z]; }
-        set { _voxels[x * 16 * 16 + y * 16 + z] = value; }
-    }
+	public UInt16 this[int x, int y, int z] { get => voxels[x * chunkSize * chunkSize + y * chunkSize + z]; set => voxels[x * chunkSize * chunkSize + y * chunkSize + z] = value; }
 
-    // Start is called before the first frame update
-    void Start()
-    {
-        _meshFilter = GetComponent<MeshFilter>();
-        GetComponent<MeshRenderer>().material = _material;
-    }
+	// Start is called before the first frame update
+	private void Awake()
+	{
+		voxels = new ushort[chunkSize * chunkSize * chunkSize];
+		meshFilter = GetComponent<MeshFilter>();
+		meshRenderer = GetComponent<MeshRenderer>();
+	}
 
-    private void Update()
-    {
+	private void Start()
+	{
+		meshRenderer.material = material;
+	}
 
-            RenderToMesh();
-    }
-    public void RenderToMesh()
-    {
-        List<Vector3> vertices = new List<Vector3>();
-        List<int> triangles = new List<int>();
+	private void Update()
+	{
+		RenderToMesh();
+	}
 
-        for (int x = 0; x < 16; x++)
-        {
-            for (int y = 0; y < 16; y++)
-            {
-                for (int z = 0; z < 16; z++)
-                {
-                    // If it is air we ignore this block
-                    var voxelType = this[x, y, z];
-                    if (voxelType == 0)
-                        continue;
+	public void RenderToMesh()
+	{
+		List<Vector3> vertices = new List<Vector3>();
+		List<int> triangles = new List<int>();
 
-                    var pos = new Vector3(x, y, z);
-                    // Remember current position in vertices list so we can add triangles relative to that
-                    var verticesPos = vertices.Count;
-                    var trianglesPos = triangles.Count;
+		for (int x = 0; x < chunkSize; x++)
+		for (int y = 0; y < chunkSize; y++)
+		for (int z = 0; z < chunkSize; z++)
+		{
+			// If it is air we ignore this block
+			var voxelType = this[x, y, z];
+			if (voxelType == 0)
+				continue;
 
-                    for (int i = 0; i < 6; i++)
-                    {
-                        Vector3 checkPos = _directions[i] + new Vector3(x, y, z);
-                        
-                        if (checkPos.x == -1 || checkPos.x == 16 || checkPos.y == -1 || checkPos.y == 16 || checkPos.z == -1 || checkPos.z == 16)
-                        {
-                            Vector3 checkedChunk = transform.position / 16 + _directions[i];
-                            
-                            if (_world.Chunks.ContainsKey(new ChunkId((int)checkedChunk.x, (int)checkedChunk.y, (int)checkedChunk.z)))
-                            {
-                                Vector3 checkedVoxel = new Vector3(x, y, z) + transform.position + _directions[i];
-                                if (_world[(int)checkedVoxel.x, (int)checkedVoxel.y, (int)checkedVoxel.z] == 0)
-                                {
-                                    foreach (var tri in GetDirectionTriangles(i))
-                                        triangles.Add(verticesPos + tri);
-                                }
-                            }
-                            else
-                            {
-                                foreach (var tri in GetDirectionTriangles(i))
-                                    triangles.Add(verticesPos + tri);
-                            }
-                            
-                        }
-                        else if (this[(int)checkPos.x, (int)checkPos.y, (int)checkPos.z] == 0)
-                        {
-                            foreach (var tri in GetDirectionTriangles(i))
-                                triangles.Add(verticesPos + tri);
-                        }
-                    }
+			var pos = new Vector3Int(x, y, z);
+			// Remember current position in vertices list so we can add triangles relative to that
+			var verticesPos = vertices.Count;
+			var trianglesPos = triangles.Count;
 
-                    // If no verticies were added no triangles are added
-                    if (trianglesPos == triangles.Count)
-                    {
-                        continue;
-                    }
-                    foreach (var vert in _cubeVertices)
-                        vertices.Add(pos + vert); // Voxel postion + cubes vertex
-                }
-            }
-        }
+			for (int i = 0; i < 6; i++)
+			{
+				Vector3Int checkPos = Directions[i] + pos;
 
-        // Apply new mesh to MeshFilter
-        var mesh = new Mesh();
-        mesh.SetVertices(vertices);
-        mesh.SetTriangles(triangles.ToArray(), 0);
-        mesh.RecalculateNormals();
-        _meshFilter.mesh = mesh;
-    }
+				if (checkPos.x == -1 || checkPos.x == chunkSize || checkPos.y == -1 || checkPos.y == chunkSize || checkPos.z == -1 || checkPos.z == chunkSize)
+				{
+					Vector3Int checkedChunk = (Vector3Int)ChunkId + Directions[i];
 
-    private static Vector3[] _cubeVertices = new[] {
-         new Vector3 (0, 0, 0),
-         new Vector3 (1, 0, 0),
-         new Vector3 (1, 1, 0),
-         new Vector3 (0, 1, 0),
-         new Vector3 (0, 1, 1),
-         new Vector3 (1, 1, 1),
-         new Vector3 (1, 0, 1),
-         new Vector3 (0, 0, 1),
-    };
+					if (World.Chunks.ContainsKey(new ChunkId(checkedChunk.x, checkedChunk.y, checkedChunk.z)))
+					{
+						Vector3Int checkedVoxel = pos + (Vector3Int)ChunkId * chunkSize + Directions[i];
+						if (World[checkedVoxel.x, checkedVoxel.y, checkedVoxel.z] == 0)
+						{
+							foreach (var tri in GetDirectionTriangles(i))
+								triangles.Add(verticesPos + tri);
+						}
+					}
+					else
+					{
+						foreach (var tri in GetDirectionTriangles(i))
+							triangles.Add(verticesPos + tri);
+					}
+				}
+				else if (this[checkPos.x, checkPos.y, checkPos.z] == 0)
+				{
+					foreach (var tri in GetDirectionTriangles(i))
+						triangles.Add(verticesPos + tri);
+				}
+			}
 
-    private static int[] _cubeTriangles = new[] {
-        // Front
-         0, 2, 1,
-         0, 3, 2,
-        // Top
-         2, 3, 4,
-         2, 4, 5,
-        // Right
-         1, 2, 5,
-         1, 5, 6,
-        // Left
-         0, 7, 4,
-         0, 4, 3,
-        // Back
-         5, 4, 7,
-         5, 7, 6,
-        // Bottom
-         0, 6, 7,
-         0, 1, 6
-    };
+			// If no vertices were added no triangles are added
+			if (trianglesPos == triangles.Count)
+			{
+				continue;
+			}
 
-    private static int[] GetDirectionTriangles(int num)
-    {
-        int[] triangles = new int[6];
-        for (int i = 0; i < 6; i++)
-        {
-            triangles[i] = _cubeTriangles[i + num * 6];
-        }
-        return triangles;
-    }
+			foreach (var vert in CubeVertices)
+				vertices.Add(pos + vert); // Voxel position + cubes vertex
+		}
 
-    private static Vector3[] _directions = new Vector3[] {
-        Vector3.back,
-        Vector3.up,
-        Vector3.right,
-        Vector3.left,
-        Vector3.forward,
-        Vector3.down,
-    };
+
+		// Apply new mesh to MeshFilter
+		var mesh = new Mesh();
+		mesh.SetVertices(vertices);
+		mesh.SetTriangles(triangles.ToArray(), 0);
+		mesh.RecalculateNormals();
+		meshFilter.mesh = mesh;
+	}
+
+	private static readonly Vector3[] CubeVertices =
+	{
+		new Vector3(0, 0, 0),
+		new Vector3(1, 0, 0),
+		new Vector3(1, 1, 0),
+		new Vector3(0, 1, 0),
+		new Vector3(0, 1, 1),
+		new Vector3(1, 1, 1),
+		new Vector3(1, 0, 1),
+		new Vector3(0, 0, 1),
+	};
+
+	private static readonly int[] CubeTriangles =
+	{
+		// Front
+		0, 2, 1,
+		0, 3, 2,
+		// Top
+		2, 3, 4,
+		2, 4, 5,
+		// Right
+		1, 2, 5,
+		1, 5, 6,
+		// Left
+		0, 7, 4,
+		0, 4, 3,
+		// Back
+		5, 4, 7,
+		5, 7, 6,
+		// Bottom
+		0, 6, 7,
+		0, 1, 6
+	};
+
+	private static int[] GetDirectionTriangles(int num)
+	{
+		int[] triangles = new int[6];
+		for (int i = 0; i < 6; i++)
+		{
+			triangles[i] = CubeTriangles[i + num * 6];
+		}
+
+		return triangles;
+	}
+
+	private static readonly Vector3Int[] Directions =
+	{
+		Vector3Int.back,
+		Vector3Int.up,
+		Vector3Int.right,
+		Vector3Int.left,
+		Vector3Int.forward,
+		Vector3Int.down,
+	};
+
 }

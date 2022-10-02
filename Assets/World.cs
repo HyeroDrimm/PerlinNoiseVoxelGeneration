@@ -4,7 +4,7 @@ public class World
 {
     public Dictionary<ChunkId, Chunk> Chunks = new Dictionary<ChunkId, Chunk>();
 
-    public UInt16 this[int x, int y, int z]
+    public ushort this[int x, int y, int z]
     {
         get
         {
